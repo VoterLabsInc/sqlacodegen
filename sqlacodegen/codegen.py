@@ -615,6 +615,7 @@ class CodeGenerator(object):
             parent =  model.name
             for relation in relations:
                 relationship_ = Relationship(parent, relation['child'])
+                relationship_.kwargs = relation['kwargs']
                 model._add_attribute(relation['name'], relationship_)
         rendered = 'class {0}({1}):\n'.format(model.name, model.parent_name)
         if self.audit_all or model.table.name in self.audited:

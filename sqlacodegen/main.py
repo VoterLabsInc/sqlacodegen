@@ -2,6 +2,7 @@ from __future__ import unicode_literals, division, print_function, absolute_impo
 import argparse
 import codecs
 import sys
+import json
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.schema import MetaData
@@ -28,7 +29,7 @@ def main():
     parser.add_argument('--outfile', help='file to write output to (default: stdout)')
     parser.add_argument('--audited', help='comma separated list of audited table names')
     parser.add_argument('--auditall', action='store_true', help='audit all tables')
-    parser.add_argument('--relationship', action='append', nargs=3, metavar=('parent', 'child', 'name'), help='Creates an association with the specified name')
+    parser.add_argument('--relationship', action='append', nargs=4, metavar=('parent', 'child', 'name', 'kwargs'), help='Creates an association with the specified name')
     args = parser.parse_args()
 
     if args.version:
@@ -40,10 +41,12 @@ def main():
         parser.print_help()
         return
     _relationship = dict()
+    args.relationship = [] if args.relationship is None else args.relationship
     for rel in args.relationship:
         key = rel[0]
         val = { 'child' : rel[1]
               ,'name' : rel[2]
+              , 'kwargs' : json.loads(rel[3])
               }
         if not (key in _relationship):
             _relationship[key] = []
