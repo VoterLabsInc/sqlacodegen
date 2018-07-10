@@ -382,9 +382,6 @@ class CodeGenerator(object):
             self.collector.add_literal_import('sqlalchemy_continuum.plugins', 'FlaskPlugin')
             self.collector.add_literal_import('sqlalchemy.orm','configure_mappers')
 
-        self.collector.add_literal_import('flask_security', 'UserMixin')
-        self.collector.add_literal_import('flask_security', 'RoleMixin')
-
         classes = {}
         for table in sorted(metadata.tables.values(), key=lambda t: (t.schema or '', t.name)):
             # Support for Alembic and sqlalchemy-migrate -- never expose the schema version tables
