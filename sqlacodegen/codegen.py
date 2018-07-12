@@ -332,13 +332,13 @@ class CodeGenerator(object):
     def __init__(self, metadata, noindexes=False, noconstraints=False, nojoined=False, noinflect=False,
                  noclasses=False, indentation='    ', model_separator='\n\n',
                  ignored_tables=('alembic_version', 'migrate_version'), table_model=ModelTable, class_model=ModelClass,
-                 template=None, audited=None, audit_all=False, force_relationship={}):
+                 template=None, audited=None, audit_all=False, force_relationship={}, flask_login_user=None, flask_login_role=None):
         super(CodeGenerator, self).__init__()
         self.force_relationship = force_relationship
         if audited is None:
             audited = {}
         if audit_all:
-            self.audited = [table.name for table in metadata.tables]
+            self.audited = [table.name for table in metadata.tables.values()]
         else:
             self.audited = audited
         self.audit_all = audit_all
@@ -381,6 +381,13 @@ class CodeGenerator(object):
             self.collector.add_literal_import('sqlalchemy_continuum', 'make_versioned')
             self.collector.add_literal_import('sqlalchemy_continuum.plugins', 'FlaskPlugin')
             self.collector.add_literal_import('sqlalchemy.orm','configure_mappers')
+
+        if flask_login_user:
+            self.collector.add_literal_import('flask_security', 'UserMixin')
+            self.flask_login_user = flask_login_user
+        if flask_login_role:
+            self.collector.add_literal_import('flask_security', 'RoleMixin')
+            self.flask_login_role = flask_login_role
 
         classes = {}
         for table in sorted(metadata.tables.values(), key=lambda t: (t.schema or '', t.name)):
@@ -617,7 +624,16 @@ class CodeGenerator(object):
                 relationship_ = Relationship(parent, relation['child'])
                 relationship_.kwargs = relation['kwargs']
                 model._add_attribute(relation['name'], relationship_)
-        rendered = 'class {0}({1}):\n'.format(model.name, model.parent_name)
+
+        # Stes the desired model(s) to instantiate the flask-login classes UserMixin/RoleMixin
+        # (as set by the --loginuser and --loginrole command options)
+        if model.name == self.flask_login_user:
+            rendered = 'class {0}({1}, {2}):\n'.format(model.name, model.parent_name, 'UserMixin')
+        elif model.name == self.flask_login_role:
+            rendered = 'class {0}({1}, {2}):\n'.format(model.name, model.parent_name, 'RoleMixin')
+        else:
+            rendered = 'class {0}({1}):\n'.format(model.name, model.parent_name)
+
         if self.audit_all or model.table.name in self.audited:
             rendered += '{0}__versioned__ = {1}\n'.format(self.indentation, '{}')
         rendered += '{0}__tablename__ = {1!r}\n'.format(self.indentation, model.table.name)

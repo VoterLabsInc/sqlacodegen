@@ -30,6 +30,8 @@ def main():
     parser.add_argument('--audited', help='comma separated list of audited table names')
     parser.add_argument('--auditall', action='store_true', help='audit all tables')
     parser.add_argument('--relationship', action='append', nargs=4, metavar=('parent', 'child', 'name', 'kwargs'), help='Creates an association with the specified name')
+    parser.add_argument('--loginuser', help='Model name that will instantiate the flask-login "UserMixin" (default: none)')
+    parser.add_argument('--loginrole', help='Model name that will instantiate the flask-login "UserRole" (default: none)')
     args = parser.parse_args()
 
     if args.version:
@@ -57,30 +59,19 @@ def main():
     tables = args.tables.split(',') if args.tables else None
     metadata.reflect(engine, args.schema, not args.noviews, tables)
     outfile = codecs.open(args.outfile, 'w', encoding='utf-8') if args.outfile else sys.stdout
-    if args.auditall:
-        generator = CodeGenerator(metadata,
-                                  args.noindexes,
-                                  args.noconstraints,
-                                  args.nojoined,
-                                  args.noinflect,
-                                  args.noclasses,
-                                  audit_all=args.auditall,
-                                  force_relationship=args.relationship)
-    elif args.audited:
-        generator = CodeGenerator(metadata,
-                                  args.noindexes,
-                                  args.noconstraints,
-                                  args.nojoined,
-                                  args.noinflect,
-                                  args.noclasses,
-                                  audited=set(args.audited.split(',')),
-                                  force_relationship=args.relationship)
-    else:
-        generator = CodeGenerator(metadata,
-                                  args.noindexes,
-                                  args.noconstraints,
-                                  args.nojoined,
-                                  args.noinflect,
-                                  args.noclasses,
-                                  force_relationship=args.relationship)
+
+    if args.audited:
+        args.audited = set(args.audited.split(','))
+
+    generator = CodeGenerator(metadata,
+                              args.noindexes,
+                              args.noconstraints,
+                              args.nojoined,
+                              args.noinflect,
+                              args.noclasses,
+                              audited=args.audited,
+                              audit_all=args.auditall,
+                              flask_login_user=args.loginuser,
+                              flask_login_role=args.loginrole,
+                              force_relationship=args.relationship)
     generator.render(outfile)
