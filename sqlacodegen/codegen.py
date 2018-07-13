@@ -383,11 +383,13 @@ class CodeGenerator(object):
             self.collector.add_literal_import('sqlalchemy.orm','configure_mappers')
 
         if flask_login_user:
-            self.collector.add_literal_import('flask_security', 'UserMixin')
             self.flask_login_user = flask_login_user
+            self.collector.add_literal_import('flask_security', 'UserMixin')
         if flask_login_role:
-            self.collector.add_literal_import('flask_security', 'RoleMixin')
             self.flask_login_role = flask_login_role
+            self.collector.add_literal_import('flask_security', 'RoleMixin')
+            if flask_login_role != 'Role':
+                self.collector.add_literal_import('sqlalchemy', 'join')
 
         classes = {}
         for table in sorted(metadata.tables.values(), key=lambda t: (t.schema or '', t.name)):
@@ -682,6 +684,26 @@ class CodeGenerator(object):
         for attr, relationship in model.attributes.items():
             if isinstance(relationship, Relationship):
                 rendered += '{0}{1} = {2}\n'.format(self.indentation, attr, self.render_relationship(relationship))
+
+                 # Workaround for relationships of depth 2 between User class and Role class
+                # For example, if the flask roles are stored in a 'Privlages' table,
+                # and the user is associated with a 'User -> Positions -> Privlages' relationship,
+                # then the roles class is 'Privlages' and the linking class is 'Positions'
+                classes = filter(lambda model: isinstance(model, self.class_model), self.models)
+                class_dict = {c.name: c for c in classes}
+                role_name = self.flask_login_role.lower()
+                link_name = relationship.target_cls
+                # If we need a role relationship and this user does not have a role collumn
+                #       AND this relationship is the one connected to the table with the roles relationship
+                if model.name == self.flask_login_user and self.flask_login_role and self.flask_login_role != 'Role' \
+                    and role_name+'s' in class_dict[link_name].attributes:
+
+                    link_name = link_name.lower()
+                    user_link = f"t_{model.name.lower()}_{link_name}"
+                    link_role = f"t_{link_name}_{role_name}"
+                    join = f"join({user_link}, {link_role}, {user_link}.c.{link_name}_id == {link_role}.c.{link_name}_id)"
+                    rendered += f"{self.indentation}roles = relationship('{self.flask_login_role}', secondary={join})\n"
+
 
         # Render subclasses
         for child_class in model.children:
