@@ -692,7 +692,7 @@ class CodeGenerator(object):
                 # then the roles class is 'Privlages' and the linking class is 'Positions'
                 classes = filter(lambda model: isinstance(model, self.class_model), self.models)
                 class_dict = {c.name: c for c in classes}
-                role_name = self.flask_login_role.lower()
+                role_name = self.flask_login_role.lower() if self.flask_login_role else ''
                 link_name = relationship.target_cls
                 # If we need a role relationship and this user does not have a role collumn
                 #       AND this relationship is the one connected to the table with the roles relationship
