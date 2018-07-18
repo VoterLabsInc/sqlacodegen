@@ -353,6 +353,9 @@ class CodeGenerator(object):
         self.ignored_tables = ignored_tables
         self.table_model = table_model
         self.class_model = class_model
+        self.flask_login_user = flask_login_user
+        self.flask_login_role = flask_login_role
+        
         if template:
             self.template = template
         self.inflect_engine = self.create_inflect_engine()
@@ -383,10 +386,8 @@ class CodeGenerator(object):
             self.collector.add_literal_import('sqlalchemy.orm','configure_mappers')
 
         if flask_login_user:
-            self.flask_login_user = flask_login_user
             self.collector.add_literal_import('flask_security', 'UserMixin')
         if flask_login_role:
-            self.flask_login_role = flask_login_role
             self.collector.add_literal_import('flask_security', 'RoleMixin')
             if flask_login_role != 'Role':
                 self.collector.add_literal_import('sqlalchemy', 'join')
