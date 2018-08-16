@@ -209,14 +209,10 @@ class ModelClass(Model):
         return _re_invalid_identifier.sub('_', name)
 
     def _add_attribute(self, attrname, value):
-        attrname = tempname = self._convert_to_valid_identifier(attrname)
-        counter = 1
-        while tempname in self.attributes:
-            tempname = attrname + str(counter)
-            counter += 1
+        attrname = self._convert_to_valid_identifier(attrname)
 
-        self.attributes[tempname] = value
-        return tempname
+        self.attributes[attrname] = value
+        return attrname
 
     def add_imports(self, collector):
         super(ModelClass, self).add_imports(collector)
