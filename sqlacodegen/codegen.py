@@ -213,10 +213,26 @@ class ModelClass(Model):
         counter = 1
         while tempname in self.attributes:
             tempname = attrname + str(counter)
+            # These prints have been left knowing that sys.stdout is somehow
+            # prematurely redirected to the 'out_file', and thus rather
+            # than correctly printing the warning, it is added as the first
+            # line of the output file.
+            # TODO: correctly redirect prints to stdout, while keeping final
+            # render as being written to the output file
+            print(f'#WARNING: {self.name} already has attribute {attrname}, '
+                  +f'renaming to {tempname}\n')
             counter += 1
 
         self.attributes[tempname] = value
         return tempname
+
+    def _set_attribute(self, attrname, value):
+        if attrname in self.attributes:
+            # TODO: correctly redirect prints to stdout, while keeping final
+            # render as being written to the output file
+            print(f'#WARNING: {self.name} already has attribute {attrname}, '
+                  +f'overriding with forced relationship')
+        self.attributes[attrname] = value
 
     def add_imports(self, collector):
         super(ModelClass, self).add_imports(collector)
@@ -328,6 +344,7 @@ class CodeGenerator(object):
 
 {configure_mappers_call}
 """
+
 
     def __init__(self, metadata, noindexes=False, noconstraints=False, nojoined=False, noinflect=False,
                  noclasses=False, indentation='    ', model_separator='\n\n',
@@ -626,7 +643,12 @@ class CodeGenerator(object):
             for relation in relations:
                 relationship_ = Relationship(parent, relation['child'])
                 relationship_.kwargs = relation['kwargs']
-                model._add_attribute(relation['name'], relationship_)
+                # For each forced attribute argument, add/override that
+                # attribute in the table.
+                # Note: arguments that conflict by attempting to add
+                # the same name twice are caught before code generation begins
+                # (within main.py).
+                model._set_attribute(relation['name'], relationship_)
 
         # Stes the desired model(s) to instantiate the flask-login classes UserMixin/RoleMixin
         # (as set by the --loginuser and --loginrole command options)

@@ -43,15 +43,23 @@ def main():
         parser.print_help()
         return
     _relationship = dict()
+    _rel_set = set()
     args.relationship = [] if args.relationship is None else args.relationship
-    for rel in args.relationship:
-        key = rel[0]
-        val = { 'child' : rel[1]
-              ,'name' : rel[2]
-              , 'kwargs' : json.loads(rel[3])
+    for (key, child, name, kwargs) in args.relationship:
+        val = { 'child' : child,
+                'name' : name,
+                'kwargs' : json.loads(kwargs)
               }
         if not (key in _relationship):
             _relationship[key] = []
+        # There must not be conflicts where a table is given
+        # forced relationships that share an an attribute name
+        if (key, name) in _rel_set:
+            raise KeyError(f'Tried to create a forced relationship "{name}" '
+                           +f'within {key}, but another forced relationship '
+                           +f'exists in {key} with the same name.')
+        _rel_set.add((key, name))
+
         _relationship[key].append(val)
     args.relationship = _relationship
     engine = create_engine(args.url)
