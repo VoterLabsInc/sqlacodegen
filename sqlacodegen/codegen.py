@@ -213,13 +213,7 @@ class ModelClass(Model):
         counter = 1
         while tempname in self.attributes:
             tempname = attrname + str(counter)
-            # These prints have been left knowing that sys.stdout is somehow
-            # prematurely redirected to the 'out_file', and thus rather
-            # than correctly printing the warning, it is added as the first
-            # line of the output file.
-            # TODO: correctly redirect prints to stdout, while keeping final
-            # render as being written to the output file
-            print(f'#WARNING: {self.name} already has attribute {attrname}, '
+            print(f'WARNING: {self.name} already has attribute {attrname}, '
                   +f'renaming to {tempname}\n')
             counter += 1
 
@@ -228,9 +222,7 @@ class ModelClass(Model):
 
     def _set_attribute(self, attrname, value):
         if attrname in self.attributes:
-            # TODO: correctly redirect prints to stdout, while keeping final
-            # render as being written to the output file
-            print(f'#WARNING: {self.name} already has attribute {attrname}, '
+            print(f'WARNING: {self.name} already has attribute {attrname}, '
                   +f'overriding with forced relationship')
         self.attributes[attrname] = value
 
