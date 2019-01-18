@@ -231,6 +231,7 @@ class ModelClass(Model):
 
         if any(isinstance(value, Relationship) for value in self.attributes.values()):
             collector.add_literal_import('sqlalchemy.orm', 'relationship')
+            collector.add_literal_import('sqlalchemy.orm', 'backref')
 
         print(f'LOOK AT ME: ')
         for k,v in self.attributes.value:
