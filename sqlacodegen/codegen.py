@@ -232,6 +232,10 @@ class ModelClass(Model):
         if any(isinstance(value, Relationship) for value in self.attributes.values()):
             collector.add_literal_import('sqlalchemy.orm', 'relationship')
 
+        print(f'LOOK AT ME: ')
+        for k,v in self.attributes.value:
+            print('\t', k, '\t', v)
+
         for child in self.children:
             child.add_imports(collector)
 
