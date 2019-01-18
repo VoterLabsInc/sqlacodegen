@@ -231,11 +231,9 @@ class ModelClass(Model):
 
         if any(isinstance(value, Relationship) for value in self.attributes.values()):
             collector.add_literal_import('sqlalchemy.orm', 'relationship')
+            # There is likely a way to determine if a custom relationship
+            # actually requires a backref obj, but as a quick fix for now:
             collector.add_literal_import('sqlalchemy.orm', 'backref')
-
-        print(f'LOOK AT ME: ')
-        for k,v in self.attributes.value:
-            print('\t', k, '\t', v)
 
         for child in self.children:
             child.add_imports(collector)
