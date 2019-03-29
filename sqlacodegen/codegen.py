@@ -129,7 +129,7 @@ class Model(object):
 
             # TODO replace this quick fix to use postgres specific JSON
             # as it provides filtering on keys / values
-            if (type(column.type).__name__ == 'JSON')
+            if (type(column.type).__name__ == 'JSON'):
                 collector.add_literal_import('sqlalchemy.dialects.postgres', 'JSON')
             else:
                 collector.add_import(column.type)
