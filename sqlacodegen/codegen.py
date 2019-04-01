@@ -126,7 +126,14 @@ class Model(object):
             collector.add_import(Column)
 
         for column in self.table.columns:
-            collector.add_import(column.type)
+
+            # TODO replace this quick fix to use postgres specific JSON
+            # as it provides filtering on keys / values
+            if (type(column.type).__name__ == 'JSON'):
+                collector.add_literal_import('sqlalchemy.dialects.postgresql', 'JSON')
+            else:
+                collector.add_import(column.type)
+
             if column.server_default:
                 collector.add_literal_import('sqlalchemy', 'text')
 
