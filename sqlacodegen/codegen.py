@@ -131,6 +131,7 @@ class Model(object):
             # as it provides filtering on keys / values
             if (type(column.type).__name__ == 'JSON'):
                 collector.add_literal_import('sqlalchemy.dialects.postgresql', 'JSON')
+                collector.add_literal_import('sqlalchemy.ext.mutable', 'MutableDict')
             else:
                 collector.add_import(column.type)
 
@@ -347,11 +348,14 @@ class CodeGenerator(object):
 {configure_mappers_call}
 """
 
-
-    def __init__(self, metadata, noindexes=False, noconstraints=False, nojoined=False, noinflect=False,
+    def __init__(self, metadata, noindexes=False, noconstraints=False,
+                 nojoined=False, noinflect=False,
                  noclasses=False, indentation='    ', model_separator='\n\n',
-                 ignored_tables=('alembic_version', 'migrate_version'), table_model=ModelTable, class_model=ModelClass,
-                 template=None, audited=None, audit_all=False, force_relationship={}, flask_login_user=None, flask_login_role=None):
+                 ignored_tables=('alembic_version', 'migrate_version'),
+                 table_model=ModelTable, class_model=ModelClass,
+                 template=None, audited=None, audit_all=False,
+                 force_relationship={}, flask_login_user=None,
+                 flask_login_role=None, special_column_types=[]):
         super(CodeGenerator, self).__init__()
         self.force_relationship = force_relationship
         if audited is None:
@@ -374,7 +378,15 @@ class CodeGenerator(object):
         self.class_model = class_model
         self.flask_login_user = flask_login_user
         self.flask_login_role = flask_login_role
-        
+        # Create a dictionary of tables with:
+        # a dictionary of old types to be replaced with new types
+        # E.g.: 'Config JSON JSONB' creates: {Config: {JSON: JSONB}}
+        # Allowing us to replace any JSON columns in the Config table
+        # with JSONB columns
+        self.special_column_types = {table_name: {type_name: new_type}
+                                     for table_name, type_name, new_type
+                                     in special_column_types}
+
         if template:
             self.template = template
         self.inflect_engine = self.create_inflect_engine()
@@ -497,8 +509,7 @@ class CodeGenerator(object):
             return 'Base = declarative_base()\nmetadata = Base.metadata'
         return 'metadata = MetaData()'
 
-    @staticmethod
-    def render_column_type(coltype):
+    def render_column_type(self, coltype, tablename):
         args = []
         if isinstance(coltype, Enum):
             args.extend(repr(arg) for arg in coltype.enums)
@@ -524,9 +535,18 @@ class CodeGenerator(object):
                 else:
                     args.append(repr(value))
 
-        rendered = coltype.__class__.__name__
+        type_name = coltype.__class__.__name__
+        rendered = type_name
+
         if args:
             rendered += '({0})'.format(', '.join(args))
+
+        # use the table name and any special column type replacements
+        # to swap out types. Ex: {Config: {JSON: JSONB}} would cause
+        # any JSON columns on the Config table to be replaced with JSONB
+        table_special_types = self.special_column_types.get(tablename, {})
+        if type_name in table_special_types:
+            rendered = table_special_types[type_name]
 
         return rendered
 
@@ -562,7 +582,7 @@ class CodeGenerator(object):
             extra_args.append('unique=True')
         return 'Index({0!r}, {1})'.format(index.name, ', '.join(extra_args))
 
-    def render_column(self, column, show_name):
+    def render_column(self, column, show_name, tablename):
         kwarg = []
         is_sole_pk = column.primary_key and len(column.table.primary_key) == 1
         dedicated_fks = [c for c in column.foreign_keys if len(c.constraint.columns) == 1]
@@ -598,7 +618,7 @@ class CodeGenerator(object):
 
         return 'Column({0})'.format(', '.join(
             ([repr(column.name)] if show_name else []) +
-            ([self.render_column_type(column.type)] if render_coltype else []) +
+            ([self.render_column_type(column.type, tablename)] if render_coltype else []) +
             [self.render_constraint(x) for x in dedicated_fks] +
             [repr(x) for x in column.constraints] +
             ['{0}={1}'.format(k, repr(getattr(column, k))) for k in kwarg] +
@@ -622,7 +642,7 @@ class CodeGenerator(object):
         rendered = 't_{0} = Table(\n{1}{0!r}, metadata,\n'.format(model.table.name, self.indentation)
 
         for column in model.table.columns:
-            rendered += '{0}{1},\n'.format(self.indentation, self.render_column(column, True))
+            rendered += '{0}{1},\n'.format(self.indentation, self.render_column(column, True, model.table.name))
 
         for constraint in sorted(model.table.constraints, key=_get_constraint_sort_key):
             if isinstance(constraint, PrimaryKeyConstraint):
@@ -703,7 +723,7 @@ class CodeGenerator(object):
         for attr, column in model.attributes.items():
             if isinstance(column, Column):
                 show_name = attr != column.name
-                rendered += '{0}{1} = {2}\n'.format(self.indentation, attr, self.render_column(column, show_name))
+                rendered += '{0}{1} = {2}\n'.format(self.indentation, attr, self.render_column(column, show_name, model.name))
 
         # Render relationships
         if any(isinstance(value, Relationship) for value in model.attributes.values()):

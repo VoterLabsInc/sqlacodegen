@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--relationship', action='append', nargs=4, metavar=('parent', 'child', 'name', 'kwargs'), help='Creates an association with the specified name')
     parser.add_argument('--loginuser', help='Model name that will instantiate the flask-login "UserMixin" (default: none)')
     parser.add_argument('--loginrole', help='Model name that will instantiate the flask-login "UserRole" (default: none)')
+    parser.add_argument('--columntype',  action='append', nargs=3, metavar=('table', 'old_type', 'new_type'), help='TODO')
     args = parser.parse_args()
 
     if args.version:
@@ -70,6 +71,8 @@ def main():
     if args.audited:
         args.audited = set(args.audited.split(','))
 
+    args.columntype = [] if args.columntype is None else args.columntype
+
     generator = CodeGenerator(metadata,
                               args.noindexes,
                               args.noconstraints,
@@ -80,5 +83,6 @@ def main():
                               audit_all=args.auditall,
                               flask_login_user=args.loginuser,
                               flask_login_role=args.loginrole,
-                              force_relationship=args.relationship)
+                              force_relationship=args.relationship,
+                              special_column_types=args.columntype)
     generator.render(outfile)
